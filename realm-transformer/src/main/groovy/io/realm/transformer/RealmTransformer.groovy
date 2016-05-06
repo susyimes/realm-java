@@ -18,6 +18,8 @@ package io.realm.transformer
 
 import com.android.SdkConstants
 import com.android.build.api.transform.*
+import com.android.build.gradle.BasePlugin
+import com.android.builder.core.AndroidBuilder
 import com.google.common.collect.ImmutableSet
 import com.google.common.collect.Sets
 import com.google.common.io.Files
@@ -43,6 +45,11 @@ import static com.android.build.api.transform.QualifiedContent.*
 class RealmTransformer extends Transform {
 
     private Logger logger = LoggerFactory.getLogger('realm-logger')
+    private BasePlugin androidPlugin;
+
+    public RealmTransformer(BasePlugin androidPlugin) {
+        this.androidPlugin = androidPlugin
+    }
 
     @Override
     String getName() {
@@ -84,6 +91,9 @@ class RealmTransformer extends Transform {
 
         // Create and populate the Javassist class pool
         ClassPool classPool = createClassPool(inputs, referencedInputs)
+        // Append android.jar to class pool. We don't need the class names of them but only the class in the pool for
+        // javassist. See https://github.com/realm/realm-java/issues/2703.
+        addBootClassesToClassPool(classPool)
 
         logger.info "ClassPool contains Realm classes: ${classPool.getOrNull('io.realm.RealmList') != null}"
 
@@ -278,4 +288,23 @@ class RealmTransformer extends Transform {
         return merged;
     }
 
+    // Use reflection to get the AndroidBuild from Android plugin for getting the path to android.jar
+    // There is no official way to get the path to android.jar for transform.
+    // See https://android.googlesource.com/platform/tools/base/+/gradle_2.0.0/build-system/gradle-core/src/main/groovy/com/android/build/gradle/internal/transforms/InstantRunTransform.java#337
+    private void addBootClassesToClassPool(ClassPool classPool) {
+        try {
+            def androidBuilderField = BasePlugin.getDeclaredField("androidBuilder");
+            androidBuilderField.setAccessible(true)
+            AndroidBuilder androidBuilder = (AndroidBuilder)androidBuilderField.get(androidPlugin)
+            def bootClasspathList = androidBuilder.getBootClasspathAsStrings(true)
+            bootClasspathList.each {
+                logger.info "Add boot class " + it + " to class pool."
+                classPool.appendClassPath(it)
+            }
+        } catch (Exception e) {
+            // Just log it. It might not impact the transforming if the method which needs to be transformer doesn't
+            // contain classes from android.jar.
+            logger.info("Cannot get androidBuilder caused by:", e)
+        }
+    }
 }

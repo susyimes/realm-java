@@ -1,3 +1,9 @@
+## 0.90.1
+
+### Bug fixes
+
+* Fixed CannotCompileException when related class defination in android.jar cannot be found (#2703).
+
 ## 0.90.0
 
 * Updated Realm Core to 0.100.0.
