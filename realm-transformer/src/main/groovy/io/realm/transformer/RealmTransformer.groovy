@@ -47,6 +47,7 @@ class RealmTransformer extends Transform {
     private Logger logger = LoggerFactory.getLogger('realm-logger')
     private BasePlugin androidPlugin;
 
+    // TODO: BasePlugin is not available in android experimental gradle plugin!
     public RealmTransformer(BasePlugin androidPlugin) {
         this.androidPlugin = androidPlugin
     }
@@ -290,7 +291,7 @@ class RealmTransformer extends Transform {
 
     // Use reflection to get the AndroidBuild from Android plugin for getting the path to android.jar
     // There is no official way to get the path to android.jar for transform.
-    // See https://android.googlesource.com/platform/tools/base/+/gradle_2.0.0/build-system/gradle-core/src/main/groovy/com/android/build/gradle/internal/transforms/InstantRunTransform.java#337
+    // See https://code.google.com/p/android/issues/detail?id=209426
     private void addBootClassesToClassPool(ClassPool classPool) {
         try {
             def androidBuilderField = BasePlugin.getDeclaredField("androidBuilder");
